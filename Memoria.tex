@@ -1,0 +1,313 @@
+\documentclass[10pt,a4paper]{article}
+\setlength{\parskip}{0.25cm} %edicion de espaciado
+\setlength{\parindent}{0cm} %edicion de sangría
+\clubpenalty=10000 %líneas viudas NO
+\widowpenalty=10000 %líneas viudas NO
+\usepackage{hyperref}
+\hypersetup{
+	colorlinks = true,
+	linkcolor = blue
+}
+\usepackage[utf8]{inputenc}
+\usepackage[spanish]{babel}
+\usepackage{amsmath}
+\usepackage{amsthm}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{appendix}
+\usepackage[left=2cm,right=2cm,top=2cm,bottom=2cm]{geometry}
+\usepackage{mdframed}
+\author{Código: CMM917511}
+\title{Aterrizaje vertical de un cohete}
+
+\newtheorem{proposicion}{Proposición}[section]
+\newmdenv[linecolor=black, linewidth=1pt]{framedfigure}
+
+
+\begin{document}
+\maketitle
+
+\section{Descenso con mínimo consumo de combustible}
+Utilizando las notaciones para la discretización de los datos que se proponen en el enunciado, el problema propuesto consiste en calcular los valores de ciertas incógnitas $f_0^x, f_0^y, f_0^z, \cdots, f_{K-1}^x, f_{K-1}^y, f_{K-1}^z$ ---correspondientes a las coordenadas $(x,y,z)$ de los perfiles de fuerza $f_i$--- que minimicen la función\footnote{La aplicación se ha escrito en función de los valores de los perfiles $f_i$ directamente por simplicidad visual, pero en realidad habría que escribir todas las componentes de cada perfil como variables de la función.} del consumo de combustible
+\[
+\Gamma(f_0, \cdots, f_{K-1}) = \gamma \Delta t \sum_{i=0}^{k-1} \parallel  f_i \parallel_2
+\]
+sujeto a las restricciones de posición final $p_K = 0$, velocidad final $v_K = 0$, las restricciones de las posiciones intermedias $p_i^z \geq \alpha \parallel (p_i^x,p_i^y)\parallel_2$ y la restricción de fuerza máxima $\parallel f_i \parallel_2 \leq F^{max}$.
+
+\subsection{Modelización del problema}
+Antes de presentar un modelo de optimización con el que podamos trabajar, es necesario que todos los elementos que van a intervenir en el mismo ---función objetivo, restricciones, etc.--- sean dependientes exclusivamente de las variables de decisión, que en este caso serán las componentes de los perfiles de fuerza. Por tanto, lo primero será desarrollar una expresión general ---no recursiva--- de las velocidades $v_i$ y las posiciones $p_i$ que dependan exclusivamente de los perfiles de fuerza $f_i$, pues ambas magnitudes intervienen en las restricciones comentadas al inicio. De esta manera, la expresión general para ambas ---cuya cuyas demostraciones \ref{prop:v_k} y \ref{prop:p_k} se encuentran en el anexo final--- es la siguiente: 
+\begin{align}
+v_j &= v_0 - j\Delta t g \vec{e_3} + \frac{\Delta t}{m} \sum_{n=0}^{j-1} f_n \label{ec:general_v}\\
+p_j &= p_0 + \Delta t j v_0 - \Delta t^2\cdot \frac{j^2}{2} g \vec{e} + \frac{\Delta t^2}{m} \sum_{n=0}^{j-1}\left(j - n - \frac{1}{2}\right) f_n \label{ec:general_p}
+\end{align}
+Las ecuaciones \ref{ec:general_v} y \ref{ec:general_p} particularizadas para la posición final $p_K$ y la velocidad final $v_K$ permiten reescribir las restricciones en las que intervenían de la siguiente manera:
+\[
+\begin{cases}
+v_K = 0 \\
+p_K = 0
+\end{cases}
+\Rightarrow
+\begin{cases}
+\frac{\Delta t}{m} \sum_{n=0}^{K-1} f_n = -v_0 + K\Delta t g \vec{e_3} \\
+\frac{\Delta t^2}{m} \sum_{n=0}^{K-1}\left(K - n - \frac{1}{2}\right) f_n = -p_0 - \Delta t K v_0 + \Delta t^2g \frac{K^2}{2}\vec{e}
+\end{cases}
+\]
+En consecuencia, si desarrollamos el sistema anterior en las tres componentes de cada vector, éste queda como:
+\[
+\begin{pmatrix}
+\frac{\Delta t}{m} & 0 & 0 & & \frac{\Delta t}{m} & 0 & 0 \\
+0 & \frac{\Delta t}{m} & 0 & \cdots & 0 & \frac{\Delta t}{m} & 0 \\
+0 & 0 & \frac{\Delta t}{m} & & 0 & 0 & \frac{\Delta t}{m} \\
+
+\frac{\Delta t^2 \left(K - \frac{1}{2}\right)}{m} & 0 & 0 & & \frac{\Delta t^2 \left(1 - \frac{1}{2}\right)}{m} & 0 & 0 \\
+0 & \frac{\Delta t^2 \left(K - \frac{1}{2}\right)}{m} & 0 & \cdots & 0 & \frac{\Delta t^2 \left(1 - \frac{1}{2}\right)}{m} & 0 \\ 
+0 & 0 & \frac{\Delta t^2 \left(K - \frac{1}{2}\right)}{m} & & 0 & 0 & \frac{\Delta t^2 \left(1 - \frac{1}{2}\right)}{m} \\ 
+\end{pmatrix}
+\begin{pmatrix}
+f_0^x \\
+f_0^y \\
+f_0^z \\
+\vdots \\
+f_{K-1}^x \\
+f_{K-1}^y \\
+f_{K-1}^z 
+\end{pmatrix}
+= \begin{pmatrix}
+-v_0^x \\
+-v_0^y \\
+-v_0^z + K\Delta t g  \\
+-p_0^x-\Delta tKv_0^x \\
+-p_0^y-\Delta tKv_0^y \\
+-p_0^z-\Delta tKv_0^z + \Delta t^2 g\frac{K^2}{2}
+
+\end{pmatrix}
+\]
+donde la matriz de coeficientes ---que denotaremos $A_{eq}$--- es de tamaño $6\times 3K$ y la matriz de términos independientes ---que denotaremos $b_{eq}$--- es de tamaño $6\times 1$. De esta manera, tenemos un sistema lineal indeterminado con $3K-6$ variables independientes y $6$ dependientes.
+
+De nuevo, gracias a las expresiones de las ecuaciones \ref{ec:general_v} y \ref{ec:general_p}, las restricciones no lineales sobre las posiciones durante el aterrizaje
+\[
+(p_i^z)^2 - \alpha^2 (p_i^x)^2 - \alpha^2 (p_i^y)^2 \geq 0 \\
+\]
+quedarían como:
+\begin{align*}
+\left(\overbrace{p_0^z + i \Delta t v_0^z - \Delta t^2 \frac{i^2}{g}}^{A_1} + \overbrace{\Delta t^2 \frac{1}{m} \sum_{j=0}^{i-1} \left(i-j-\frac{1}{2}\right) f_j^z}^{A_2}\right)^2 \\
+-\alpha^2 \left(\overbrace{p_0^x + i \Delta t v_0^x}^{B_1} + \overbrace{\Delta t^2 \frac{1}{m} \sum_{j=0}^{i-1} \left(i-j-\frac{1}{2}\right) f_j^x}^{B_2}\right)^2 \\
+- \alpha^2 \left(\overbrace{p_0^y + i \Delta t v_0^y}^{C_1} + \overbrace{\Delta t^2 \frac{1}{m} \sum_{j=0}^{i-1} \left(i-j-\frac{1}{2}\right) f_j^y}^{C_2}\right)^2 \geq 0
+\end{align*}
+y utilizando la notación que indicada para simplificar la escritura, el desarrollo de cuadrados de las desigualdades resultaría en:
+\[
+-A_2^2-2A_1A_2 + \alpha^2 B_2^2 + \alpha^2 2B_1B_2 + \alpha^2 C_2^2 + \alpha^2 2C_1C_2 \leq A_1^2 - \alpha^2 B_1^2 - \alpha^2 C_1^2
+\]
+
+Una vez reescritas las restricciones del problema, estamos en condiciones de poder escribir el modelo matemático de optimización que describe el problema propuesto:
+
+\begin{figure}[h]
+El problema $\mathcal{P}$ se plantea como:
+\begin{itemize}
+\item Variable de decisión:
+\[
+f := (f_0^x, f_0^y, f_0^z, \cdots, f_{K-1}^x, f_{K-1}^y, f_{K-1}^z)
+\]
+\item Función objetivo:
+\begin{align*}
+\Gamma: \mathbb R^{3K} &\longrightarrow \mathbb R \\
+		(f_0, \cdots, f_K) &\longmapsto \gamma \Delta t \sum_{i=0}^{K-1} \parallel f_i \parallel_2
+\end{align*}
+\item Restricciones lineales:
+\[
+A_{eq} \cdot f = b_{eq}
+\]
+\item Restricciones no lineales
+\[
+\forall i \in \{1, \cdots, K\} : -A_2^2-2A_1A_2 + \alpha^2 B_2^2 + \alpha^2 2B_1B_2 + \alpha^2 C_2^2 + \alpha^2 2C_1C_2 \leq A_1^2 - \alpha^2 B_1^2 - \alpha^2 C_1^2 
+\]
+\[
+\forall i \in \{0, \cdots, K-1\} : \parallel f_i \parallel_2 \leq F^{max}
+\]
+\end{itemize}
+\caption{Modelo completo de optimización del problema}
+\end{figure}
+
+La modelización que se presenta es un problema de optimización no lineal que se resuelve con técnicas de programación no lineal, como el \textit{Metodo de Newton} o el de \textit{Multiplicadores de Lagrange}. Para ello, hemos empleado la función \texttt{fmincon} de \textit{MatLab} que emplea distintos algoritmos en función de la entrada propuesta.
+
+En cualquier caso, hay un elemento imprescindible en el uso de cualquiera de estos algoritmos: la obtención de una solución inicial factible ---no necesariamente óptima---. Sin embargo, esto representa un problema grave a la hora de resolver el problema abordándolo por medio de estas técnicas, pues en general una solución factible no es sencilla de encontrar y para $K$ elevado la heurísitica no es una opción.
+
+\subsection{Cálculo de soluciones iniciales factibles}
+Para encontrar dicha solución inicial factible, hemos readaptado una de las técnicas de programación lineal para la inicialización del algoritmo del Símplex conocida como \textit{el método de las dos fases}. El procedimiento consiste en elaborar un nuevo problema $\mathcal{P}'$ a partir del problema $\mathcal{P}$ original a través de los siguientes pasos: 
+\begin{enumerate}
+\item Incluir variables ``artificiales'' $x_i^a$ como un sumando más en todas\footnote{En rigor es en todas, pero para simplificar el problema computacionalmente no se han incluido en aquellas restricciones que se verifiquen trivialmente si todas las variables de decisión se anulan.} las restricciones.
+\item Cambiar la función objetivo a la función suma de todas las variables artificiales.
+\item Introducir la restricción de que todas las variables artificiales sean mayores o iguales que 0.
+\end{enumerate}
+
+Así pues, resolver $\mathcal{P'}$ consiste en minimizar la suma de las variables artificiales. Como todas son mayores o iguales a cero, la resolución consiste en ``anular'' las nuevas variables artificiales. Si se consigue una solución óptima de $\mathcal{P'}$ que anule todas las variables artificiales, se habrá conseguido una tupla de variables de decisión del problema original que verifica las restricciones del problema original (aunque no sea la óptima), mientras que si no se consigue una solución óptima que anule todas las variables artificiales no habrá solución factible del problema $\mathcal{P}$ original.
+
+Ahora, se puede obtener una solucion inicial factible para $\mathcal{P'}$ de manera sencilla anulando las variables de decisión y escogiendo las variables artificiales de manera que cumplan las restricciones. Observamos que tal y como tenemos escritas las restricciones tienen una de las siguientes formas:
+$\Theta(f) = \Omega$ o $\Theta(f) \leq \Omega$. Observamos que el término de la izquierda depende de $f$ y se anula al anularse $f$ mientras que el término de derecha es independiente de $f$. Por tanto, dada una restricción, la variable artificial debe introducirse en el lado izquierdo sumando, si el término de la izquierda es positivo, o restando, si el término i es negativo. 
+\[
+\begin{cases}
+\Theta(f) + x_a = \Omega \text{ o }  \Theta(f) + x_a\leq \Omega &\text{ si } \Omega >= 0\\
+\Theta(f) - x_a = \Omega \text{ o }  \Theta(f) - x_a\leq \Omega&\text{ si } \Omega < 0
+\end{cases}
+\]
+
+De este modo, al asignar a la variable artificial el valor $|\Omega|$ y al anular $f$ se cumple la restriccion. Hemos obtenido una solución factible el problema $\mathcal{P'}$.
+
+Observamos además que en las restricciones que signo $\leq$ con $\Omega > 0$ no hace falta introducir variable artificial ya que simplemente anulando $f$ se cumple la restricción. Haremos esto en la implementación.
+
+Una vez calculada la solución inicial a través del procedimiento descrito, podemos emplear la misma para resolver el problema $\mathcal{P}$ original.
+
+\subsection{Resumen apartado (a)}
+Así pues la resolucón del apartado (a) consiste en estas dos fases.
+\begin{itemize}
+\item \textbf{fase 1 (Inicialización)}: Se transforma el problema $\mathcal{P}$ en el problema $\mathcal{P'}$ y se resuelve el problema $\mathcal{P'}$ para encontrar una solución inicial factible del problema $\mathcal{P}$.
+\item \textbf{fase 2 (Resolución)}: se utiliza la solución inicial factible obtenida en la fase anterior para resolver el problema $\mathcal{P}$.
+\end{itemize}
+Los detalles de la implementación se exponerán en un apartado dedicado posterior.
+
+\section{Tiempo mínimo de descenso}
+Para obtener el valor de $K$ mínimo tal que el problema $\mathcal{P}$ original sea factible, partimos de un valor de $K$ para el cual sabemos que es factible y realizamos una \textit{búsqueda binaria} en el espacio de soluciones $[1,\cdots,K]$. En cada paso dividimos el espacio por la mitad y comprobamos si para el valor $mathcal(K)$ intermedio el problema es factible usando el algoritmo de la primera fase. Si no lo es debemos buscar en la mitad superior del espacio restante pues el aterrizaje requiere de más tiempo, mientras que si sí lo es podemos reducir el tiempo y buscamos en la mitad inferior del espacio restante.
+
+Los detalles de la implementación se ecuentran posteriormente en una sección dedicada.
+
+\section{Funcionamiento del código de MatLab y resultados}
+
+La ejecución de los archivos \texttt{apartado\_a.m} y \texttt{apartado\_b.m} ejecutan el funcionamiento correspondiente a ambos apartados.
+
+Para el apartado (a) se sigue el siguiente orden de ejecución:
+
+\begin{enumerate}
+\item Cálculo de solución inicial:
+
+La sentencia
+
+\texttt{[sol\_inicial, fval, exitflag, output] = inicializacion(K, p\_0, v\_0, p\_K, v\_K, delta\_t, m, g, Fmax, alpha, options);}
+
+nos proporciona una solución inicial para el problema de optimización en la variable \texttt{sol\_inicial}. 
+
+Dentro de la función \texttt{inicializacion} se hace referencia a funciones para calcular las matrices de las restricciones lineales y las funciones de las restricciones no lineales.
+
+Con \texttt{init\_va\_no\_lineal = inicializacion\_aritificial\_no\_lineal(K, p\_0, v\_0, delta\_t, g, alpha);} obtenemos una solución inicial donde las únicas variables no nulas son las artificiales.
+
+Tras esto hacemos la llamada a \texttt{fmincon}, utilizando como función objetivo la suma de las variables artificiales (todas positivas, por tanto la suma también), que queremos que valga 0.
+
+Aunque no se haga uso de esta función en la ejecución final, durante el proceso de desarrollo hicimos uso de las funciones \texttt{comprueba\_cono} (en referencia a la forma que tiene la restricción sobre los puntos) y \texttt{comprueba\_f} para comprobar que las soluciones obtenidas en esta fase y en la siguiente se ajustaban a las restricciones del enunciado. Las funciones \texttt{calcula\_v\_y\_p} y \texttt{de\_p\_a\_xyz} facilitan el uso de la función \texttt{comprueba\_cono};
+
+\item Cálculo del uso de combustible mínimo
+
+La llamada \texttt{[f,fval, exitflag, output] = optimizacion(sol\_inicial, K, p\_0, v\_0, p\_K, v\_K, delta\_t, m, g, Fmax, alpha, gamma, options);}
+desencadena la resolución del problema de optimización para el cálculo del uso mínimo de combustible. El funcionamiento de esta función es muy similar al de la función previamente explicada. El cambio principal es la función objetivo, que calcula la suma de las normas euclídeas de las fuerzas, todo ello multiplicado por $\gamma\cdot \Delta t$. Se puede observar en el código que hay una opción para mayor precisión, repitiendo la llamada a \texttt{fmincon} varias veces. Esto se debe a que, debido a las restricciones de iteraciones, evaluaciones y otras (que se especifican en el argumento \texttt{options}) la solución que se obtiene es muy próxima a la óptima, pero no exacta. Repitiendo el proceso varias veces, usando como solución inicial al obtenida previamente, el resultado se aproxima cada vez más al óptimo. No obstante, tras experimentación y pruebas vimos que generalmente el resultado se estabiliza a partir de cinco iteraciones. 
+
+Tras ello, el resultado óptimo encontrado para el consumo de combustible es aproximadamente 187 (en el caso de mayor precisión que llevamos a cabo se obtuvo 186,89). Hemos dejado un valor menor de iteraciones en el código para una ejecución más breve.
+
+Para obtener la mayor precisión en caso de quererse se pueden modificar el número de repeticiones de \texttt{fmincon} en \texttt{optimizacion} y modificar los valores del parámetro \texttt{options} para hacerlos más estrictos. De la misma manera, para obtener tiempos de ejecución menores se pueden modificar los valores de \texttt{options} para hacerlos más suaves.
+
+La siguiente línea permite una precisión muy buena:
+
+\texttt{options = optimoptions('fmincon', 'MaxIterations', 10000, 'MaxFunctionEvaluations', 60000,         'StepTolerance',1e-15);}
+
+\item Representación gráfica de la solución:
+
+La última parte de la función \texttt{apartado\_a} es la llamada a \texttt{representacion\_trayectoria(f, K, delta\_t, g, m);}. Todos los detalles necesarios se pueden consultar en el propio código.
+
+Para ver esta representación sin ejecutar el código completo puede consultarse el archivo \texttt{Trayectoria.gif}.
+
+\end{enumerate}
+
+Para el apartado (b) la ejecución es más sencilla:
+
+A sabiendas de que $K = 35$ nos lleva a una solución válida, y que trivialmente $K = 0$ no, para buscar el $K$ mínimo que permite que el cohete aterrice utilizamos dichos valores como cotas superior e inferior respectivamente para hacer búsqueda binaria, funcionalidad llevada a cabo en \texttt{busca\_K\_minimo}. En cada etapa de la búsqueda se invoca la función \texttt{inicialización} para que calcule una solución inicial al problema (que de existir, es suficiente, pues no buscamos minimizar uso de combustible en este apartado). No obstante, por el uso del método de las dos fases, solo podemos considerar la solución válida si la suma de las variables artificiales es 0. Debido a posibles errores de precisión leves, la condición de aceptación de la solución calculada es que todas las variables artificiales tengan un valor menos a $10^{-5}$. Se puede ver esto implementado en la función de \texttt{busca\_K\_minimo}. Al igual que en el apartado anterior, se pueden modificar los niveles de precisión con el parámetro \texttt{options}.
+
+Tras múltiples pruebas con diversos valores de precisión y tiempos de ejecución, el resultado obtenido es que el menor valor de $K$ que permite el aterrizaje bajo las condiciones impuestas es el propuesto por el enunciado, $K=35$. Por tanto, el tiempo mínimo de descenso es 35.
+
+
+
+
+\appendix
+
+\section{Demostración de resultados mencionados}
+
+\begin{proposicion}
+\label{prop:v_k}
+La fórmula recursiva de la velocidad, definida como
+\[
+v_{j+1} = v_{j} + \frac{\Delta t}{m}f_j - \Delta t g \vec{e_3}
+\]
+puede expresarse como la fórmula de de término general
+\[
+v_j = v_0 - j\Delta t g \vec{e_3} + \frac{\Delta t}{m} \sum_{n=0}^{j-1} f_n
+\]
+\end{proposicion}
+\begin{proof}
+Primero, desplegamos la expresión para formular la hipótesis de inducción. En el desarrollo que se muestra a continuación, el valor $n := j$ deja el despliegue en términos del valor $v_0$, que es el caso base de la recursión y no permite desplegar recursivamente más la expresión.
+\begin{align*}
+v_{j} &= v_{j-1} + \frac{\Delta t}{m}f_{j-1} - \Delta t g \vec{e_3} \\
+	  &= v_{j-2} + \frac{\Delta t}{m}f_{j-2} + \frac{\Delta t}{m}f_{j-1} - 2\Delta t g \vec{e_3} \\
+	  &= \cdots \\
+	  &= v_{j-n} +  \frac{\Delta t}{m}\sum_{i=0}^{n-1}f_i - n\Delta t g \vec{e_3}
+\end{align*}
+
+Ahora, para probar la hipótesis, basta con probar dicha fórmula por inducción, comprobando que se verifica para\footnote{También se podría haber dicho que trivialmente estaba probado para $v_0$, sin embargo, se ha escogido $v_1$ para explicitar que no se verifica sólo para el caso base de la recursión.} $v_1$ la hipótesis
+\[
+v_1 = v_0 + \frac{\Delta t}{m} f_0 - \Delta t g \vec{e} = v_0 - 1 \cdot \Delta t g \vec{e} + \frac{\Delta t}{m} \sum_{i=0}^0 f_i
+\]
+y que suponiéndola probada para $j$, podemos probarla para $j+1$, es decir:
+\begin{align*}
+v_{j+1} &= v_{j} + \frac{\Delta t}{m}f_{j} - \Delta t g \vec{e_3} \\
+	  &= \left(v_0 - j\Delta t g \vec{e_3} + \frac{\Delta t}{m} \sum_{n=0}^{j-1} f_n\right) +  \frac{\Delta t}{m} f_j - \Delta t g \vec{e_3} \\
+	  &= v_0 - (j+1)\Delta t g \vec{e_3} + \frac{\Delta t}{m}\sum_{n=0}^j f_n
+\end{align*}
+Por tanto, por inducción, queda probada la fórmula general.
+\end{proof}
+
+\begin{proposicion}
+\label{prop:p_k}
+La fórmula recursiva de la posición, definida como
+\[
+p_{j+1} = p_{j} + \frac{\Delta t}{2}\left(v_j+v_{j+1}\right)
+\]
+puede expresarse como la fórmula de de término general
+\[
+p_j = p_0 + \Delta t j v_0 - \Delta t^2\cdot \frac{j^2}{2} g \vec{e} + \frac{\Delta t^2}{m} \sum_{n=0}^{j-1}\left(j - n - \frac{1}{2}\right) f_n
+\]
+\end{proposicion}
+\begin{proof}
+Primero, desplegamos la expresión para formular la hipótesis de inducción. En el desarrollo que se muestra a continuación, el valor $n := j$ deja el despliegue en términos del valor $p_0$, que es el caso base de la recursión y no permite desplegar recursivamente más la expresión.
+\begin{align*}
+p_{j} &= p_{j-1} +  \Delta t \left(\frac{1}{2} v_{j-1} + \frac{1}{2} v_j\right)  \\
+	  &= p_{j-2} + \Delta t \left(\frac{1}{2}v_{j-2} + v_{j-1} + \frac{1}{2} v_j \right) \\
+	  &= p_{j-n} + \Delta t \left(\frac{1}{2} v_{	j-n} + \sum_{i=j-n+1}^{j-1}v_i + \frac{1}{2} v_j \right)	  
+\end{align*}
+Sin embargo, como hemos calculado el término general de las $v_i$, podemos sustituir la expresión general en la fórmula anterior, obteniendo la expresión
+\begin{align*}
+p_j &= p_0 + \Delta t \left(\frac{1}{2} v_0 + \sum_{i = 1}^{j-1} v_i + \frac{1}{2} v_j \right) \\
+	&= p_0 + \Delta t  \left(\frac{1}{2} v_0 + \sum_{i=1}^{j-1} \left(v_0 + \frac{\Delta t}{m} \sum_{n = 0}^{i-1} f_n - i \Delta t g \vec{e_3}\right) + \frac{1}{2}\left(v_0 + \frac{\Delta t}{m} \sum_{i = 0}^{j-1} f_i - j\Delta t g \vec{e_3}\right) \right) \\
+	&= p_0 + \Delta t j v_0 - \Delta t^2 g \frac{j^2}{2} \vec{e_3} + \frac{\Delta t^2}{m} \sum_{i=1}^{j-1} \sum_{n=0}^{i-1}f_n + \frac{1}{2} \frac{\Delta t^2}{m} \sum_{i=0}^{j-1}f_i \\
+	&= p_0 + \Delta t j v_0 - \Delta t^2 g \frac{j^2}{2} \vec{e_3} + \frac{\Delta t^2}{m} \sum_{i=0}^{j-1}(j-1-i) f_i + \frac{1}{2} \frac{\Delta t^2}{m} \sum_{i=0}^{j-1}f_i \\
+	&= p_0 + \Delta t j v_0 - \Delta t^2 g \frac{j^2}{2} \vec{e_3} + \frac{\Delta t^2}{m} \sum_{i=0}^{j-1}\left(j-i-\frac{1}{2}\right) f_i
+\end{align*}
+
+Ahora, para probar la hipótesis, basta con probar dicha fórmula por inducción, comprobando que se verifica para\footnote{También se podría haber dicho que trivialmente estaba probado para $p_0$, sin embargo, se ha escogido $p_1$ para explicitar que no se verifica sólo para el caso base de la recursión.} $p_1$ la hipótesis
+\begin{align*}
+p_1 &= p_0 + \Delta t \left(\frac{1}{2}v_0 + \frac{1}{2}v_1\right) \\
+	&= p_{0} + \Delta t \left(\frac{1}{2} v_{0} + \sum_{i=1}^{0} v_i + \frac{1}{2} v_1 \right) \\
+	&= p_0 + \Delta t \left(\frac{1}{2} v_{0} + \frac{1}{2} \left(v_0 + \frac{\Delta t}{m} \sum_{i=0}^0 f_i - \Delta t g \vec{e}\right) \right) \\
+	&= p_0 + \Delta t v_0 + \Delta t^2 \frac{1}{2} \left(v_0 + \frac{\Delta t}{m} \sum_{i=0}^0 f_i - \Delta t g \vec{e}\right)
+\end{align*}
+y se verifica por la igualdad probada\footnote{Nótese que dicha igualdad lo que ha probado explícitamente es que se puede pasar desde la expresión desplegada hasta la que conforma nuestra hipótesis de inducción, sin más que sustituir por el $j$ correspondiente (sin necesidad de probar que la hipótesis es, en efecto, cierta).} anteriormente al sustituir la expresión general de las $v_i$. Ahora, suponiéndola probada para $j$, probémosla para $j+1$, es decir:
+\begin{align*}
+p_{j+1} &= p_{j} + \frac{\Delta t}{2}\left(v_j+v_{j+1}\right) \\
+		&\stackrel{\text{HI}}{=} \left(p_0 + \Delta t j v_0 - \Delta t^2 g \frac{j^2}{2} \vec{e_3} + \frac{\Delta t^2}{m} \sum_{i=0}^{j-1}\left(j-i-\frac{1}{2}\right) f_i \right) + \frac{\Delta t}{2}\left(v_j+v_{j+1}\right)
+\end{align*}
+Ahora, sustituimos en $v_j$ y en $v_{j+1}$ las expresiones dadas por la formula general de las velocidades calculada anteriormente.
+\begin{align*}
+p_{j+1}	&= p_0 + \Delta t j v_0 - \Delta t^2 g \frac{j^2}{2} \vec{e_3} + \frac{\Delta t^2}{m} \sum_{i=0}^{j-1}\left(j-i-\frac{1}{2}\right) f_i \\
+		&+ \frac{\Delta t}{2}\left(v_0 - j\Delta t g \vec{e_3} + \frac{\Delta t}{m} \sum_{i=0}^{j-1}f_i + v_0 - (j+1)\Delta t g \vec{e_3} + \frac{\Delta t}{m} \sum_{i=0}^{j}f_i\right) \\		
+		&= p_0 + \Delta t (j+1) v_0 - \Delta t^2 g \frac{j^2}{2} \vec{e_3} - \Delta t^2 g \frac{j}{2} \vec{e_3} - \Delta t^2 g \frac{j+1}{2} \vec{e_3} + \frac{\Delta t^2}{m}\left(\sum_{i=0}^{j-1}\left(j-i-\frac{1}{2}\right) f_i + \frac{1}{2}\sum_{i=0}^{j-1}f_i + \frac{1}{2}\sum_{i=0}^{j}f_i \right) \\
+		&= p_0 + \Delta t (j+1) v_0 - \Delta t^2 g \frac{j^2 +2j +1}{2} \vec{e_3} + \frac{\Delta t^2}{m}\left(\sum_{i=0}^{j-1}\left(j+1-i-\frac{1}{2}\right)f_i + \frac{1}{2}f_j\right) \\
+		&= p_0 + \Delta t (j+1) v_0 - \Delta t^2 g \frac{(j+1)^2}{2} \vec{e_3} + \frac{\Delta t^2}{m}\left(\sum_{i=0}^{j}\left(j+1-i-\frac{1}{2}\right)f_i\right)
+\end{align*}
+Por tanto, por inducción, queda probada la fórmula general.
+\end{proof}
+\end{document}
